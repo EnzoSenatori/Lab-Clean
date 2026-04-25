@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 def criar_app(
     livro_repository,
     reserva_repository,
+    qr_code_service,
     buscar_livros_controller,
     detalhar_livro_controller,
     reservar_livro_controller,
@@ -54,6 +55,7 @@ def criar_app(
         resultado = reservar_livro_controller(
             livro_repository,
             reserva_repository,
+            qr_code_service,
             livro_id,
             unidade,
             nome_cliente,

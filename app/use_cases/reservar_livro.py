@@ -4,11 +4,13 @@ from datetime import date
 
 from app.domain.entities import Reserva
 from app.domain.repositories import LivroRepository, ReservaRepository
+from app.domain.services.qr_code_service import QRCodeService
 
 
 def reservar_livro(
     livro_repository: LivroRepository,
     reserva_repository: ReservaRepository,
+    qr_code_service: QRCodeService,
     livro_id: int,
     unidade: str,
     nome_cliente: str | None = None,
@@ -36,7 +38,9 @@ def reservar_livro(
     unidade_formatada = unidade.replace(" ", "").upper()
     texto_qr = f"RESERVA-{reserva.id}-{unidade_formatada}"
 
-    reserva.definir_qr_code(texto_qr, imagem_base64="")
+    imagem_base64 = qr_code_service.gerar_base64(texto_qr)
+
+    reserva.definir_qr_code(texto_qr, imagem_base64)
 
     reserva_repository.adicionar(reserva)
 
