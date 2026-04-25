@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Livro:
+    id: int
     titulo: str
     autor: str
     editora: str
