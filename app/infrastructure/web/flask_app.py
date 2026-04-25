@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from flask import Flask, request, jsonify
-
+from flask_cors import CORS
 
 def criar_app(
     livro_repository,
@@ -14,6 +14,7 @@ def criar_app(
     reservar_livro_controller,
 ):
     app = Flask(__name__)
+    CORS(app)
 
     # ROTA: buscar livros
     @app.route("/livros", methods=["GET"])
