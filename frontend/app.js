@@ -2,30 +2,55 @@ const API_URL = "http://localhost:5000";
 
 async function buscarLivros() {
     const termo = document.getElementById("buscaInput").value;
+    const button = document.querySelector(".search-bar .btn-primary");
+    const originalText = button ? button.textContent : null;
 
-    const response = await fetch(`${API_URL}/livros?q=${termo}`);
-    const data = await response.json();
-
-    const container = document.getElementById("resultados");
-    container.innerHTML = "";
-
-    if (data.status !== 200) {
-        container.innerHTML = `<p>${data.erro}</p>`;
-        return;
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Buscando...";
     }
 
-    for (const livro of data.data) {
-        const div = document.createElement("div");
-        div.className = "card";
+    try {
+        const response = await fetch(`${API_URL}/livros?q=${termo}`);
+        const data = await response.json();
 
-        div.innerHTML = `
-            <strong>${livro.titulo}</strong><br>
-            Autor: ${livro.autor}<br>
-            Editora: ${livro.editora}<br>
-            <button onclick="detalharLivro(${livro.id})">Detalhar</button>
-        `;
+        const container = document.getElementById("resultados");
+        container.innerHTML = "";
 
-        container.appendChild(div);
+        if (data.status !== 200) {
+            container.innerHTML = `<div class="error">${data.erro}</div>`;
+            return;
+        }
+
+        data.data.forEach((livro, index) => {
+            const div = document.createElement("div");
+            div.className = "card";
+            div.style.animationDelay = `${index * 30}ms`;
+
+            div.innerHTML = `
+                <h3 class="card-title">${livro.titulo}</h3>
+                <div class="meta-row">
+                    <span class="meta-label">Autor</span>
+                    <span class="meta-value">${livro.autor}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Editora</span>
+                    <span class="meta-value">${livro.editora}</span>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn btn-secondary btn-block" onclick="detalharLivro(${livro.id})">
+                        Detalhar
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(div);
+        });
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
     }
 }
 
@@ -37,7 +62,7 @@ async function detalharLivro(id) {
     container.innerHTML = "";
 
     if (data.status !== 200) {
-        container.innerHTML = `<p>${data.erro}</p>`;
+        container.innerHTML = `<div class="error">${data.erro}</div>`;
         return;
     }
 
@@ -48,21 +73,31 @@ async function detalharLivro(id) {
     for (const unidade in livro.unidades) {
         unidadesHtml += `
             <li>
-                ${unidade} - ${livro.unidades[unidade]}
-                <button onclick="mostrarFormulario(${livro.id}, '${unidade}')">
+                <div class="unit-info">
+                    <span class="unit-name">${unidade}</span>
+                    <span class="unit-status">${livro.unidades[unidade]}</span>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="mostrarFormulario(${livro.id}, '${unidade}')">
                     Reservar
                 </button>
             </li>
         `;
     }
 
+    const dispText = livro.disponibilidade || "";
+    const isAvailable = /dispon[íi]vel/i.test(dispText) && !/indispon[íi]vel/i.test(dispText);
+    const badgeClass = isAvailable ? "badge-success" : "badge-muted";
+
     container.innerHTML = `
-        <div class="card">
-            <h3>${livro.titulo}</h3>
-            <p>${livro.autor}</p>
-            <p>${livro.editora}</p>
-            <p>${livro.disponibilidade}</p>
-            <ul>${unidadesHtml}</ul>
+        <div class="detail-card">
+            <h3 class="detail-title">${livro.titulo}</h3>
+            <div class="detail-meta">
+                <span>${livro.autor}</span>
+                <span aria-hidden="true">·</span>
+                <span>${livro.editora}</span>
+            </div>
+            <span class="badge ${badgeClass}">${dispText}</span>
+            <ul class="unit-list">${unidadesHtml}</ul>
         </div>
     `;
 }
@@ -73,13 +108,21 @@ function mostrarFormulario(livroId, unidade) {
     const hoje = new Date().toISOString().split("T")[0];
 
     container.innerHTML = `
-        <div class="card">
+        <div class="reservation-card">
             <h3>Reservar</h3>
-            <input type="text" id="nome" placeholder="Seu nome"><br>
-            <input type="date" id="data" min="${hoje}"><br>
-            <button onclick="reservar(${livroId}, '${unidade}')">
-                Confirmar
-            </button>
+            <div class="form-group">
+                <label for="nome">Seu nome</label>
+                <input type="text" id="nome" placeholder="Digite seu nome">
+            </div>
+            <div class="form-group">
+                <label for="data">Data da reserva</label>
+                <input type="date" id="data" min="${hoje}">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary btn-block" onclick="reservar(${livroId}, '${unidade}')">
+                    Confirmar reserva
+                </button>
+            </div>
         </div>
     `;
 }
@@ -106,17 +149,30 @@ async function reservar(livroId, unidade) {
     const container = document.getElementById("reserva");
 
     if (result.status !== 201) {
-        container.innerHTML = `<p>${result.erro}</p>`;
+        container.innerHTML = `<div class="error">${result.erro}</div>`;
         return;
     }
 
     const reserva = result.data;
 
     container.innerHTML = `
-        <div class="card">
-            <h3>Reserva confirmada!</h3>
-            <p>ID: ${reserva.id}</p>
-            <img class="qr" src="${reserva.qr_code_base64}" />
+        <div class="success-card">
+            <h3><span class="success-check">✓</span> Reserva confirmada!</h3>
+            <p class="reservation-id-row">ID: <span class="code-chip">${reserva.id}</span></p>
+            <div class="qr-wrapper">
+                <img alt="QR code da reserva" src="${reserva.qr_code_base64}" />
+            </div>
         </div>
     `;
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("buscaInput");
+    if (input) {
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                buscarLivros();
+            }
+        });
+    }
+});
